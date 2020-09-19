@@ -1,0 +1,39 @@
+{% extends 's2d2_app/base.html' %}
+
+{% load static %}
+
+{% block content %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="myfiles" multiple />
+    <button type="submit">Upload</button>
+  </form>
+
+  {% if uploaded_file_url_list %}
+    {% for o in uploaded_file_url_list %}
+      <p>File uploaded at: <a href="{{ o }}">{{ o }}</a></p>
+    {% endfor %}
+  {% endif %}
+
+  {%if wrs_list %}
+  <h1>WRS PathRows for your shapefile</h1>
+  {% for t in wrs_list %}
+    <p>{{ t }}</p>
+  {% endfor %}
+  {% endif %}
+
+  {%if mgrs_list %}
+  <h1>WRS PathRows for your shapefile</h1>
+  {% for t in mgrs_list %}
+    <p>{{ t }}</p>
+  {% endfor %}
+  {% endif %}
+
+  {% if wkt_footprint %}
+    <h1>Your Shp file geometry converted to WKT</h1>
+    <p>{{wkt_footprint}}</p>
+  {% endif %}
+
+
+
+{% endblock %}

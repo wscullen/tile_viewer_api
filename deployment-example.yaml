@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobmanager-api
+spec:
+  selector:
+    matchLabels:
+      app: jobmanager-api
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jobmanager-api
+    spec:
+      containers:
+        - name: jobmanager-api
+          image: registry.kub-eo.agr.gc.ca/jobmanager-api:v0.0.19
+          command: ["gunicorn"]
+          args:
+            [
+              "--bind",
+              "0.0.0.0:5000",
+              "--log-level=debug",
+              "jobmanager.wsgi",
+              "--timeout",
+              "300",
+            ]
+          ports:
+            - containerPort: 5000
+              protocol: TCP
+          # env:
+          #   - name: USGS_EE_PASS
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: usgs-ee-pass
+          #         key: password
+          #   - name: S3_SECRET_KEY
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: minio-s3-secret-key
+          #         key: password
+          #   - name: PSQL_DB_PASS
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: jobmanager-psql-db-password
+          #         key: password
+          # envFrom:
+          #   - configMapRef:
+          #       name: jobmanager-config
+          imagePullPolicy: Always
+          volumeMounts:
+            # - name: nfsvol
+            #   mountPath: /mnt/zeusdrobo
+            - name: nfs-media-vol
+              mountPath: /code/media
+            # - mountPath: /code/testdir/
+            #   name: testing-volume-mounts
+            - mountPath: /code/config.yaml
+              subPath: config.yaml
+              name: jobmanager-config-volume
+        - name: jobmanager-api-nginx
+          image: registry.kub-eo.agr.gc.ca/jobmanager-api:v0.0.19
+          command: ["nginx"]
+          args: ["-g", "daemon off;"]
+          ports:
+            - containerPort: 80
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+          # env:
+          #   - name: USGS_EE_PASS
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: usgs-ee-pass
+          #         key: password
+          #   - name: S3_SECRET_KEY
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: minio-s3-secret-key
+          #         key: password
+          #   - name: PSQL_DB_PASS
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: jobmanager-psql-db-password
+          #         key: password
+          # envFrom:
+          #   - configMapRef:
+          #       name: jobmanager-config
+          imagePullPolicy: Always
+          volumeMounts:
+            # - name: nfsvol
+            #   mountPath: /mnt/zeusdrobo
+            - name: nfs-media-vol
+              mountPath: /code/media
+            # - mountPath: /code/testdir/
+            #   name: testing-volume-mounts
+            - mountPath: /code/config.yaml
+              subPath: config.yaml
+              name: jobmanager-config-volume
+            - mountPath: /etc/nginx/sites-available/jobmanager
+              subPath: jobmanager
+              name: jobmanager-api-nginx-siteconf
+            - mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              name: jobmanager-api-nginx-conf
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        # - name: nfsvol
+        #   persistentVolumeClaim:
+        #     claimName: nfs-pvc
+        - name: nfs-media-vol
+          persistentVolumeClaim:
+            claimName: nfs-media-data
+        # - emptyDir: {}
+        #   name: testing-volume-mounts
+        - configMap:
+            name: jobmanager-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+          name: jobmanager-config-volume
+        - configMap:
+            name: jobmanager-api-nginx-siteconf
+            items:
+              - key: jobmanager
+                path: jobmanager
+          name: jobmanager-api-nginx-siteconf
+        - configMap:
+            name: jobmanager-api-nginx-conf
+            items:
+              - key: nginx.conf
+                path: nginx.conf
+          name: jobmanager-api-nginx-conf

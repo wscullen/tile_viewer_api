@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jobmanager-nodeport
+spec:
+  selector:
+    app: jobmanager-api
+  ports:
+    - protocol: "TCP"
+      port: 8080
+      nodePort: 30199
+  type: NodePort

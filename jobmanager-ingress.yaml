@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: jobmanager-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "4000m"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: s2d2.kub-eo.agr.gc.ca
+    http:
+      paths:
+      - backend:
+          serviceName: jobmanager-api
+          servicePort: 8080

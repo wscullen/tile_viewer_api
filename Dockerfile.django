@@ -1,0 +1,35 @@
+#FROM registry.kub-eo.agr.gc.ca/ubuntu-base:v0.0.8
+FROM registry.cullen.io/ubuntu-base:v0.0.8
+
+RUN apt update && apt install -y nginx
+
+ARG GITHUB_PAT
+
+COPY ./requirements.txt /code/requirements.txt
+
+WORKDIR /code
+
+RUN python3.7 -m pip install -r /code/requirements.txt
+
+RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/landsat_downloader.git@v0.0.4#egg=landsat_downloader
+RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/sentinel_downloader.git#egg=sentinel_downloader
+RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/spatial_ops.git@v0.0.2#egg=spatial_ops
+
+COPY . /code
+
+RUN cp -r /code/common/grid_files/ /usr/local/lib/python3.7/dist-packages/spatial_ops && \
+    cp -r /code/common/data/ /usr/local/lib/python3.7/dist-packages/spatial_ops
+
+RUN python3.7 /code/manage.py collectstatic --no-input
+
+COPY nginx_site.txt /etc/nginx/sites-available/jobmanager
+
+RUN ln -s /etc/nginx/sites-available/jobmanager /etc/nginx/sites-enabled/jobmanager
+
+EXPOSE 80
+
+EXPOSE 443
+
+EXPOSE 5000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--log-level=debug", "jobmanager.wsgi"]

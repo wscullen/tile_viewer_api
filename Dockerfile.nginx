@@ -1,0 +1,24 @@
+FROM zeus684440.agr.gc.ca/ubuntu_base:ver8
+
+RUN apt update && apt install -y nginx
+
+ARG GITHUB_PAT
+
+COPY . /code
+WORKDIR /code
+
+RUN pipenv lock -r > requirements.txt
+
+RUN python3.7 -m pip install -r /code/requirements.txt
+
+RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/landsat_downloader.git@v0.0.3#egg=landsat_downloader
+
+RUN python3.7 /code/manage.py collectstatic --no-input
+
+COPY nginx_site.txt /etc/nginx/sites-available/jobmanager
+
+RUN ln -s /etc/nginx/sites-available/jobmanager /etc/nginx/sites-enabled/jobmanager
+
+EXPOSE 5000, 80, 443
+
+CMD ["nginx"]

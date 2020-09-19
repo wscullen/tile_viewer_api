@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobmanager-downloader-2
+spec:
+  selector:
+    matchLabels:
+      app: jobmanager-downloader-2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jobmanager-downloader-2
+    spec:
+      containers:
+        - name: celery-downloader
+          image: registry.cullen.io/jobmanager-api:v0.0.24
+          command: ["/bin/sh"]
+          args: ["-c", "/code/common/celery_worker_downloader.sh"]
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: nfsvol
+              mountPath: /mnt/zeusdrobo
+            - mountPath: /code/config.yaml
+              subPath: config.yaml
+              name: jobmanager-config-volume
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        - name: nfsvol
+          persistentVolumeClaim:
+            claimName: nfs-pvc
+        - configMap:
+            name: jobmanager-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+          name: jobmanager-config-volume

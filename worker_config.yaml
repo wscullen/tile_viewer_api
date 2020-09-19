@@ -1,0 +1,5 @@
+JOB_MANAGER_API_URL: http://hal678772.agr.gc.ca:30199
+WORKER_NAME: task_runner_1
+CAPABILITIES:
+  - Sen2Agri_L2A
+JOB_MANAGER_API_PASS: aafc

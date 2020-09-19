@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobmanager-celery-beat
+spec:
+  selector:
+    matchLabels:
+      app: jobmanager-celery-beat
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jobmanager-celery-beat
+    spec:
+      containers:
+        - name: main
+          image: registry.cullen.io/jobmanager-api:v0.0.24
+          command: ["/bin/sh"]
+          args: ["-c", "/code/common/start_celery_beat.sh"]
+          # env:
+          #   - name: USGS_EE_PASS
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: usgs-ee-pass
+          #         key: password
+          #   - name: S3_SECRET_KEY
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: minio-s3-secret-key
+          #         key: password
+          #   - name: PSQL_DB_PASS
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: jobmanager-psql-db-password
+          #         key: password
+          # envFrom:
+          #   - configMapRef:
+          #       name: jobmanager-config
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: nfsvol
+              mountPath: /mnt/zeusdrobo
+            - mountPath: /code/testdir
+              name: testing-volume-mounts
+            - mountPath: /code/config.yaml
+              subPath: config.yaml
+              name: jobmanager-config-volume
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        - name: nfsvol
+          persistentVolumeClaim:
+            claimName: nfs-pvc
+        - emptyDir: {}
+          name: testing-volume-mounts
+        - configMap:
+            name: jobmanager-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+          name: jobmanager-config-volume

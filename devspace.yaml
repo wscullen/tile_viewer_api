@@ -1,0 +1,18 @@
+# images:
+#   jobmanager-api:
+#     image: zeus684440.agr.gc.ca/jobmanager-api
+# deployments:
+#   - name: jobmanager-api
+#     component:
+#       containers:
+#         - name: jobmanager-api
+#           image: john/devbackend
+#         - image: john/debugger
+# dev:
+#   sync:
+#     - imageName: jobmanager-api
+#       localSubPath: ./
+#       containerPath: /app
+#       excludePaths:
+#         - node_modules/
+#         - logs/

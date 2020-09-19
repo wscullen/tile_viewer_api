@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jobmanager-api
+spec:
+  ports:
+  - port: 5000
+    protocol: TCP
+    name: gunicorn
+  - port: 8080
+    protocol: TCP
+    name: static
+  selector:
+    app: jobmanager-api

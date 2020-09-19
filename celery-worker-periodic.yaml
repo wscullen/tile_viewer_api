@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jobmanager-celery-worker
+  labels:
+    app: jobmanager-celery-worker
+spec:
+  containers:
+    - name: celery-worker
+      image: zeus684440.agr.gc.ca/jobmanager-api:v0.0.9
+      command: ["/bin/sh"]
+      args: ["-c", "/code/common/celery_worker_s2_l8.sh"]
+      env:
+        - name: USGS_EE_USER
+          value: user_name_here
+        - name: USGS_EE_PASS
+          value: password_here
+      envFrom:
+        - configMapRef:
+            name: jobmanager-config
+      imagePullPolicy: Always
+      volumeMounts:
+        - name: nfsvol
+          mountPath: /mnt/zeusdrobo
+        - mountPath: /code/testdir/
+          name: testing-volume-mounts
+        - mountPath: /code/worker_config.yaml
+          subPath: worker_config.yaml
+          name: jobmanager-worker-config-volume
+        - mountPath: /code/config.yaml
+          subPath: config.yaml
+          name: jobmanager-config-volume
+  imagePullSecrets:
+    - name: registrypullsecret
+  volumes:
+    - name: nfsvol
+      persistentVolumeClaim:
+        claimName: nfs-pvc
+    - emptyDir: {}
+      name: testing-volume-mounts
+    - configMap:
+        name: jobmanager-worker-config
+        items:
+          - key: worker_config.yaml
+            path: worker_config.yaml
+      name: jobmanager-worker-config-volume
+    - configMap:
+        name: jobmanager-config
+        items:
+          - key: config.yaml
+            path: config.yaml
+      name: jobmanager-config-volume
