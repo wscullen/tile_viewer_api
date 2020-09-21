@@ -446,6 +446,7 @@ def start_job(
                 module_logger.info(type(celery_task))
                 module_logger.info(str(celery_task.request.id))
                 
+                module_logger.info('Setting redis task download progress.')
                 redis_instance.set(str(celery_task.request.id), 0)
 
                 def upload_callback(ct, bytes_transferred):
@@ -469,7 +470,7 @@ def start_job(
                     redis_instance.set(str(ct.request.id), int(current_bytes))
 
                 upload_callback_bound = partial(upload_callback, celery_task)
-
+                module_logger.info('Starting upload')
                 upload_result = s3_helper.upload_single_file_to_s3(
                     tile_name + ".zip", INPUT_BUCKET_NAME, callback=upload_callback_bound
                 )

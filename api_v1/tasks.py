@@ -658,6 +658,10 @@ def s2_batch_job_handle_online_product(task_id, job_info_dict):
     res = AsyncResult(task_id)
     sub_task_state = res.state
     sub_task_info = res.info
+    module_logger.info(sub_task_state)
+    module_logger.info(sub_task_info)
+    module_logger.info(job_info_dict)
+    module_logger.info("-----------------------------------")
 
     if sub_task_state == states.SUCCESS or sub_task_state == states.FAILURE:
         job_info_dict[task_id]["status"] = sub_task_state
@@ -677,24 +681,30 @@ def s2_batch_job_handle_online_product(task_id, job_info_dict):
             job_info_dict[task_id]["progress"]["download"] = 100.0
 
     else:
+        module_logger.info('sub task state is not success or failure')
         job_info_dict[task_id]["status"] = sub_task_state
-        task_progress = {}
-        for key in res.info.keys():
-            if key == 'upload':
-                task_progress[key] = res.info['upload']
-            if key == 'download':
-                task_progress[key] = res.info['download']
-        
-        if type(job_info_dict[task_id]["progress"]) == dict:
-            job_info_dict[task_id]["progress"].update(task_progress)
-        
-        job_info_dict[task_id]["kwargs"] = res.kwargs
-        job_info_dict[task_id]["args"] = res.args
-        job_info_dict[task_id]["name"] = res.name
 
-    module_logger.info(sub_task_state)
-    module_logger.info(sub_task_info)
-    module_logger.info("-----------------------------------")
+        task_progress = {}
+        module_logger.info(sub_task_state)
+        module_logger.info(states.PENDING)
+        if sub_task_state != states.PENDING:
+            module_logger.info("sub task state is not pending")
+            for key in res.info.keys():
+                if key == 'upload':
+                    task_progress[key] = res.info['upload']
+                if key == 'download':
+                    task_progress[key] = res.info['download']
+        
+        
+        if "progress" in job_info_dict[task_id].keys() and type(job_info_dict[task_id]["progress"]) == dict:
+            job_info_dict[task_id]["progress"].update(task_progress)
+        else:
+            job_info_dict[task_id]["progress"] = task_progress
+        
+        if sub_task_info is not None:
+            job_info_dict[task_id]["kwargs"] = res.kwargs
+            job_info_dict[task_id]["args"] = res.args
+            job_info_dict[task_id]["name"] = res.name
 
     return job_info_dict
 

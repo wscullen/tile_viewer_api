@@ -1,4 +1,33 @@
-## Local Docker Development
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sscullen/tile_viewer_api/master/media/fabric_api.png" width="200" align="center">
+  <br>
+  <br>
+</p>
+
+<p align="center">
+  <a href="https://cullen.io"><img alt="Built by cullen.io" src="https://img.shields.io/badge/Built%20by-cullen.io-brightgreen"></a>
+  <a href="https://github.com/sscullen/tile_viewer_api/releases"><img alt="Current release" src="https://img.shields.io/github/v/release/sscullen/tile_viewer_api"></a>
+  <a href="https://opensource.org/licenses/MIT"><img alt="MIT License" src="https://img.shields.io/github/license/sscullen/tile_viewer_api"></a>
+</p>
+
+## Tile Viewer API - Download Task Manager for Landsat 8, Sentinel 2 Data :earth_americas:
+
+Query for an area of interest, receive results from USGS and ESA APIs, along with preview images. Submit download tasks which are dispatched to celery workers to complete the tasks asynchronously.
+
+### Table of contents
+* [About](#about)
+* [Development](#development)
+* [Deploying on Kubernetes](#deploying-on-kubernetes)
+* [Testing without Kubernetes](#testing-without-kubernetes)
+* [License](#license)
+
+### About
+
+Tile Viewer API is the backend API for the [Tile Viewer](https://github.com/sscullen/tile_viewer) satellite data viewer and downloader application. It is build with Django, Django Rest Framework, Redis, PostGRES, RabbitMQ, Celery, and Minio.
+
+### Development
+
+#### Local Docker Development
 
 Create a local docker image mounted from the current code from your repo dir. Changes you make on your local dir will be reflected inside the container.
 
@@ -18,7 +47,7 @@ Remove container after use:
 
 `docker kill container_shortname`
 
-## Build and Push Latest Docker Image
+#### Build and Push Latest Docker Image
 
 When you are satisfied with the latest build, you can build a new image and push it to the private registry. Then you can update the image that your kube deployment uses to complete the upgrade.
 
@@ -38,13 +67,13 @@ Tag the image with a full repository name so it can be pushed to your private re
 Push the tagged image to the registry:
 `docker push zeus684440.agr.gc.ca/ubuntu_base:ver8`
 
-### External Data Files Required by Spatial Ops Module
+#### External Data Files Required by Spatial Ops Module
 
 If you look at the `Dockerfile.django` file, you can see that it copies two folders of external data to locations where the `spatial_ops` modules can access. More information can be found on the Spatial Ops Github page https://github.com/sscullen/spatial_ops.
 
 Follow the link on the ReadMe to download the data. Place the `grid_files` and `data` directories in the common folder in the root of the project.
 
-### Freezing Your Requirements
+#### Freezing Your Requirements
 
 Pipenv is used to manage packages and python dependencies. The Dockerfile.django file uses pip to install the dependencies so you need to freeze your dependencies and create a new `requirements.txt` before creating a new Docker image. Use the command:
 
@@ -56,7 +85,9 @@ This will create a fresh `requirements.txt` based on the latest changes to your 
 
 WARNING: This is critical because what can happen is your local pipenv env will become out of sync with your docker requirements.txt file (which can happen if you haven't updated the requirements file in a while by freezing.) What results is a Django database created with a pipenv (run django manage.py migrate from your pipenv), and your out of date docker images no longer are compatible with the database schema. To avoid this, make sure to keep your requirements.txt up to date (especially if you are doing a lot of dev from your pipenv environent and run database sync commands from the pipenv environment), or make sure to run all django manage.py database commands from inside your docker containers, which should all be using the same requirements.txt file.
 
-## ConfigMap Inside Kubernetes
+### Deploying on Kubernetes
+
+#### ConfigMap Inside Kubernetes
 
 A ConfigMap was created using the file `config.yaml` with the following command:
 s
@@ -67,7 +98,7 @@ kubectl create configmap jobmanager-config --from-file=config.yaml
 
 Inside the `deployment.yaml`, this ConfigMap is mapped to environment vars inside the container, these env vars should be used in place of a `.env` file or `config.json`. Passwords are now stored in individual Secret objects, one for USGS EarthExplorer and one for the Minio S3 Private key.
 
-## Start the Django app
+#### Start the Django app
 
 The exact command used to start the django app will vary depending on if we are in a local development environment or on the cluster.
 
@@ -77,9 +108,9 @@ The port will vary depending on the networking setup (ie which ports are exposed
 
 When the job manager is running on kubernetes, there will be a nodeport enabled so that you can access the job manager through the port on the node it is running on.
 
-## Start Celery Workers
+#### Start Celery Workers
 
-### Sen2Agri Worker
+##### Sen2Agri Worker
 
 The specific celery command to start a worker is like so:
 
@@ -89,23 +120,23 @@ But we need the django settings context enabled, so we use a BASH script to star
 
 `./common/celery_worker.sh`
 
-### Agricarta Worker
+##### Agricarta Worker
 
 There is a different queue for agricarta, to handle those jobs we start the worker differently:
 
 `celery -A jobmanager worker --loglevel=INFO --concurrency=1 -n agricarta_worker1@%h -Q agricarta`
 
-### Celery Beat for periodic tasks
+##### Celery Beat for periodic tasks
 
 We need to start an instance of celery beat to run the periodic tasks, such as L8Batch Fetch and Submit.
 
 `celery -A jobmanager beat -l debug --scheduler django_celery_beat.schedulers:DatabaseScheduler`
 
-## Add a Job
+##### Add a Job
 
 To submit a new job, you navigate to the URL defined by where your django app is running.
 
-## Update the configmap
+##### Update the configmap
 
 When the config.yaml file is updated you need to update the configmap in the cluster like so:
 
@@ -115,7 +146,7 @@ Check the status of the config map:
 
 `kubectl get configmap jobmanager-config -o=yaml`
 
-## Minikube Related (for local kubernetres testing)
+##### Minikube Related (for local kubernetres testing)
 
 Start minikube (with the insecure registry option):
 
@@ -141,17 +172,17 @@ Get the minikube node IP address (for node port access):
 
 `kubectl get nodes -o wide`
 
-## Misc Kubernetes Resources
+#### Misc Kubernetes Resources
 
 kubectl cheat sheet:
 
 https://kubernetes.io/docs/reference/kubectl/cheatsheet/
 
-## Testing Outside of Kubernetes
+### Testing Without Kubernetes
 
 5 major steps, all in separate terminals:
 
-### 1. Start the django app
+##### 1. Start the django app
 
 ```
 pipenv shell
@@ -159,28 +190,28 @@ pipenv shell
 DEVELOPMENT=True python manage.py runserver 0.0.0.0:5000
 ```
 
-### 2. Start the celery beat process
+##### 2. Start the celery beat process
 
 ```
 pipenv shell
 DEVELOPMENT=True ./common/start_celery_beat.sh
 ```
 
-### 3. Start the periodic celery worker
+##### 3. Start the periodic celery worker
 
 ```
 pipenv shell
 DEVELOPMENT=True ./common/celery_worker_periodic.sh
 ```
 
-### 4. Start the downloader celery worker
+##### 4. Start the downloader celery worker
 
 ```
 pipenv shell
 DEVELOPMENT=True ./common/celery_worker_downloader.sh
 ```
 
-### 5. Start the sen2agri celery worker (inside the jobmanager-api-centos7 docker container)
+##### 5. Start the sen2agri celery worker (inside the jobmanager-api-centos7 docker container)
 
 ```
  docker run -td -p 5001:5000 -e DEVELOPMENT=True -v /home/common/Development/job_manager/:/code -v /mnt/drobos/zeus/:/mnt/zeusdrobo zeus684440.agr.gc.ca/jobmanager-api-centos7:v0.0.13 bash
@@ -193,3 +224,7 @@ DEVELOPMENT=True ./common/celery_worker_downloader.sh
 ```
 
 NOTE: Steps 1-4 could also be executed from inside the jobmanager-api docker container. This would more closely resemble the environment that exists in the kubernetes cluster, but is mostly unnecessary since our expected development environment (Ubuntu 18.04.3 with Python3.7) closely resembles the jobmanager-api container (or should, see the note above about requirements.txt)
+
+### License
+
+MIT © [Shaun Cullen](https://cullen.io).

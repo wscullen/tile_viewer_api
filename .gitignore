@@ -25,6 +25,12 @@ grid_files/
 data/
 s2d2_proj/
 
-media/
+/media/*
+!/media/lowres_previews/
+/media/lowres_previews/*
+!/media/lowres_previews/.gitignore
+
+!/media/.gitignore
+!/media/fabric_api.png
 
 authcache.json
