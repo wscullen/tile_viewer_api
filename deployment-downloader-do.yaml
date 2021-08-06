@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobmanager-downloader
+spec:
+  selector:
+    matchLabels:
+      app: jobmanager-downloader
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jobmanager-downloader
+    spec:
+      containers:
+        - name: celery-downloader
+          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.0
+          command: ["/bin/sh"]
+          args: ["-c", "/code/common/celery_worker_downloader.sh"]
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /code/config.yaml
+              subPath: config.yaml
+              name: jobmanager-config-volume
+      # imagePullSecrets:
+      #   - name: regcred
+      volumes:
+        - configMap:
+            name: jobmanager-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+          name: jobmanager-config-volume

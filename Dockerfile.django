@@ -12,7 +12,7 @@ WORKDIR /code
 RUN python3.7 -m pip install -r /code/requirements.txt
 
 RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/landsat_downloader.git@v0.0.4#egg=landsat_downloader
-RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/sentinel_downloader.git#egg=sentinel_downloader
+RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/sentinel_downloader.git@v1.0.1#egg=sentinel_downloader
 RUN python3.7 -m pip install git+https://sscullen:$GITHUB_PAT@github.com/sscullen/spatial_ops.git@v0.0.2#egg=spatial_ops
 
 COPY . /code

@@ -48,7 +48,7 @@ LOGGING = {
             "filename": Path(BASE_DIR, "media", "debug.log"),
             "formatter": "detailed",
         },
-        "console": {"class": "logging.StreamHandler", "level": "INFO", "formatter": "detailed",},
+        "console": {"class": "logging.StreamHandler", "level": "DEBUG", "formatter": "detailed",},
     },
     "loggers": {
         "django": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},

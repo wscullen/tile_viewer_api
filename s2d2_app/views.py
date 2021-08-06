@@ -37,6 +37,7 @@ import datetime as dt
 
 import spatial_ops.grid_intersect as grid_intersect
 import spatial_ops.utils as spatial_utils
+import spatial_ops.converter as converter
 import landsat_downloader.l8_downloader as l8_downloader
 from sentinel_downloader import s2_downloader
 
@@ -779,9 +780,10 @@ class SubmitAOI(APIView):
                 wrs_list = grid_intersect.find_wrs_intersection(wkt_footprint)
 
                 wrs_wkt_geometry = []
-
+                module_logger.info(len(wrs_list))
                 for wrs in wrs_list:
                     wkt = grid_intersect.get_wkt_for_wrs_tile(wrs)
+                    module_logger.info(wkt)
                     wrs_wkt_geometry.append((wrs, wkt))
 
                 module_logger.debug("WRS AND WKT")
@@ -810,8 +812,8 @@ class SubmitAOI(APIView):
                 aoi_fields = request.data
 
                 module_logger.debug(aoi_fields)
-                date_start = datetime.strptime(aoi_fields["startDate"], "%Y%m%d")
-                date_end = datetime.strptime(aoi_fields["endDate"], "%Y%m%d")
+                date_start = datetime.strptime(aoi_fields["startDate"], "%Y%m%d").replace(hour=0, minute=0, second=0, microsecond=000000)
+                date_end = datetime.strptime(aoi_fields["endDate"], "%Y%m%d").replace(hour=23, minute=59, second=59, microsecond=999999)
 
                 arg_list = {"date_start": date_start, "date_end": date_end}
 
@@ -827,15 +829,19 @@ class SubmitAOI(APIView):
                 search_results = {}
                 platforms = aoi_fields["platforms"].split(",")
                 module_logger.debug(platforms)
+                module_logger.debug(wkt_footprint)
+
                 for platform in platforms:
                     if platform == "sentinel2":
 
                         s2_dl = s2_downloader.S2Downloader(config_path)
                         s2_end_date = date_end + dt.timedelta(days=1)
-                        s2_results = s2_dl.search_for_products_by_tile(
-                            mgrs_list, (date_start, s2_end_date), product_type="L1C"
+                        module_logger.debug(mgrs_list)
+                        s2_results = s2_dl.search_for_products_by_footprint(
+                            wkt_footprint, (f'{date_start.isoformat()}Z', f'{s2_end_date.isoformat()}Z'), product_type="L1C"
                         )
                         module_logger.debug(s2_results)
+                        module_logger.debug(wkt_footprint)
 
                         module_logger.debug("scihub sentinel results ")
 

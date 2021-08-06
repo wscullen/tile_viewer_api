@@ -20,6 +20,7 @@ static/
 
 config.yaml.bak
 config_dev.yaml.bak
+config*.yaml
 
 grid_files/
 data/
