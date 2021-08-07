@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: celery-periodic
-          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.0
+          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.2
           command: ["/bin/sh"]
           args: ["-c", "/app/common/celery_worker_periodic.sh"]
           imagePullPolicy: Always

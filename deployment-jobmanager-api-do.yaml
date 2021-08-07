@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: jobmanager-api
-          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.0
+          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.2
           command: ["gunicorn"]
           args:
             [
@@ -36,13 +36,11 @@ spec:
               subPath: config.yaml
               name: jobmanager-config-volume
         - name: jobmanager-api-nginx
-          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.0
+          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.2
           command: ["nginx"]
           args: ["-g", "daemon off;"]
           ports:
-            - containerPort: 80
-              protocol: TCP
-            - containerPort: 443
+            - containerPort: 8080
               protocol: TCP
           imagePullPolicy: Always
           volumeMounts:

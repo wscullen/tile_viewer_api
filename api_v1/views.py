@@ -80,8 +80,8 @@ redis_instance = redis.StrictRedis(
     password=settings.REDIS_PASS,
 )
 
-SENTINEL_L1C_BUCKETNAME = "s2-l1c-archive"
-SEN2AGRI_L2A_BUCKETNAME = "sen2agri-l2a"
+SENTINEL_L1C_BUCKETNAME = f"s2-l1c-archive{settings.BUCKET_SUFFIX}"
+SEN2AGRI_L2A_BUCKETNAME = f"sen2agri-l2a{settings.BUCKET_SUFFIX}"
 
 
 # class GetJob(generics.GenericAPIView):

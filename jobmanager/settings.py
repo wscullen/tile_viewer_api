@@ -48,16 +48,48 @@ LOGGING = {
             "filename": Path(BASE_DIR, "media", "debug.log"),
             "formatter": "detailed",
         },
-        "console": {"class": "logging.StreamHandler", "level": "DEBUG", "formatter": "detailed",},
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+            "formatter": "detailed",
+        },
     },
     "loggers": {
-        "django": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},
-        "celery.task": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},
-        "s2d2_app.views": {"handlers": ["file", "console"], "level": "DEBUG", "propagate": False},
-        "api_v1.views": {"handlers": ["file", "console"], "level": "DEBUG", "propagate": False},
-        "api_v1.tasks": {"handlers": ["file", "console"], "level": "DEBUG", "propagate": False},
-        "worker.tasks.download_s2": {"handlers": ["file", "console"], "level": "DEBUG", "propagate": False},
-        "worker.tasks.sen2agri_tasks": {"handlers": ["file", "console"], "level": "INFO", "propagate": False},
+        "django": {
+            "handlers": ["file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "celery.task": {
+            "handlers": ["file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "s2d2_app.views": {
+            "handlers": ["file", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "api_v1.views": {
+            "handlers": ["file", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "api_v1.tasks": {
+            "handlers": ["file", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "worker.tasks.download_s2": {
+            "handlers": ["file", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "worker.tasks.sen2agri_tasks": {
+            "handlers": ["file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 
@@ -99,6 +131,7 @@ REQUIRED_CONFIG_KEYS = [
     "REDIS_PORT",
     "MAILGUN_API_URL",
     "MAILGUN_API_KEY",
+    "BUCKET_SUFFIX",
 ]
 
 module_logger.debug(config.keys())
@@ -115,6 +148,9 @@ missing_keys = set(REQUIRED_CONFIG_KEYS) - set(list(config.keys()))
 if len(list(missing_keys)) != 0:
     module_logger.error(f"Config file loaded but missing critical vars, {missing_keys}")
     raise ConfigValueMissing(",".join(list(missing_keys)))
+
+# Unique suffix for S3 buckets to make it unique
+BUCKET_SUFFIX = config["BUCKET_SUFFIX"]
 
 # S3 Config for S3Utils
 S3_CONFIG = {

@@ -47,6 +47,7 @@ import click
 from osgeo import gdal
 import redis
 
+from django.conf import settings
 
 from celery import shared_task, task, app, states
 
@@ -62,8 +63,8 @@ MAX_S3_ATTEMPTS = 3
 
 # Internal Minio Config
 
-INPUT_BUCKET_NAME = "l8-l1c-archive"
-OUTPUT_BUCKET_NAME = "l8-l2a-products"
+INPUT_BUCKET_NAME = f"l8-l1c-archive{settings.BUCKET_SUFFIX}"
+OUTPUT_BUCKET_NAME = f"l8-l2a-products{settings.BUCKET_SUFFIX}"
 
 # # Create your tasks here
 from celery import shared_task, task, app
@@ -107,6 +108,7 @@ redis_instance = redis.StrictRedis(
     decode_responses=True,
 )
 
+
 def download_using_landsat_downloader(tile_name, entity_id, celery_task=None):
 
     downloader = l8_downloader.L8Downloader(CONFIG_FILE_PATH, verbose=False)
@@ -127,9 +129,9 @@ def download_using_landsat_downloader(tile_name, entity_id, celery_task=None):
     }
 
     def callback(progress_so_far, total_filesize, percentage_complete):
-            celery_task.update_state(
-                state=states.STARTED, meta={"download": percentage_complete}
-            )
+        celery_task.update_state(
+            state=states.STARTED, meta={"download": percentage_complete}
+        )
 
     product_type = "STANDARD"
 
@@ -148,14 +150,12 @@ def find_l2a_path(l1c_path):
 
     module_logger.debug(name)
 
-    if name.startswith('LC08'):
+    if name.startswith("LC08"):
         sat = name.split("_")[0]
         date = name.split("_")[3]
         tile = name.split("_")[2]
         # LC08_L1TP_041024_20190818_20190902_01_T1.tar
-        regex_str = r"{}_L1TP_{}_{}_\d{{8}}_01_(RT|T1)".format(
-            sat, tile, date
-        )
+        regex_str = r"{}_L1TP_{}_{}_\d{{8}}_01_(RT|T1)".format(sat, tile, date)
     else:
         sat = name[2]
         date = name.split("_")[2]
@@ -174,6 +174,7 @@ def find_l2a_path(l1c_path):
             return Path(WORKING_FOLDER_PATH, file_name)
 
     return l2a_name
+
 
 def upload_l8_l2a_to_s3(tile_name, celery_task):
     module_logger.info(tile_name)
@@ -239,48 +240,47 @@ def check_if_l2a_imagery_exists(l1c_name):
     return object_exists
 
 
-@task(bind=True, time_limit=60*60*12, soft_time_limit=60*60*6)
+@task(bind=True, time_limit=60 * 60 * 12, soft_time_limit=60 * 60 * 6)
 def download_l8_bulk_order(self, order_id):
 
     downloader = l8_downloader.L8Downloader(CONFIG_FILE_PATH, verbose=False)
-    
+
     redis_instance.set(str(self.request.id) + "_download_progress", 0)
-    
+
     def download_callback(ct, file_name, size, bytes_transferred):
-        module_logger.info('Inside download callback')
+        module_logger.info("Inside download callback")
         module_logger.info(str(ct.request.id))
-        current_bytes = int(redis_instance.get(str(ct.request.id) + "_download_progress"))
+        current_bytes = int(
+            redis_instance.get(str(ct.request.id) + "_download_progress")
+        )
         current_bytes += bytes_transferred
         percent_complete = float(round((current_bytes / size) * 100, 2))
         module_logger.info(bytes_transferred)
         module_logger.info(percent_complete)
 
-        update_dict = {
-        
-        }
+        update_dict = {}
 
         module_logger.info(file_name)
         update_dict[file_name] = {
             "status": states.STARTED,
             "download": percent_complete,
-            "download_file_size": size
+            "download_file_size": size,
         }
 
         try:
             ct.update_state(
-                task_id=str(ct.request.id),
-                state=states.STARTED,
-                meta=update_dict
+                task_id=str(ct.request.id), state=states.STARTED, meta=update_dict
             )
         except BaseException as e:
-            module_logger.info('Task isnt ready for updates to meta yet...')
+            module_logger.info("Task isnt ready for updates to meta yet...")
             module_logger.error(str(e))
-        
+
         if percent_complete > 99:
             redis_instance.set(str(ct.request.id) + "_download_progress", 0)
         else:
-            redis_instance.set(str(ct.request.id) + "_download_progress", int(current_bytes))
-
+            redis_instance.set(
+                str(ct.request.id) + "_download_progress", int(current_bytes)
+            )
 
     download_callback_bound = partial(download_callback, self)
 
@@ -298,9 +298,9 @@ def download_l8_bulk_order(self, order_id):
     if download_result.status:
 
         for file_name in download_result.data:
-            
+
             file_path = Path(WORKING_FOLDER_PATH, file_name)
-            # TODO: Extract needs to extract to a folder with the product name instead of to the 
+            # TODO: Extract needs to extract to a folder with the product name instead of to the
             # root of the working folder
             extract_result = unarchive(file_path, WORKING_FOLDER_PATH)
             if extract_result.status:
@@ -315,42 +315,47 @@ def download_l8_bulk_order(self, order_id):
                 full_path = l2a_path
 
                 if full_path.is_dir():
-                    size = sum(f.stat().st_size for f in full_path.glob('**/*') if f.is_file())
+                    size = sum(
+                        f.stat().st_size for f in full_path.glob("**/*") if f.is_file()
+                    )
                 else:
                     size = float(full_path.stat().st_size)
-                
+
                 redis_instance.set(str(self.request.id) + "_upload_progress", 0)
 
                 def upload_callback(ct, file_name, size, bytes_transferred):
-                    module_logger.info('Inside upload callback')
+                    module_logger.info("Inside upload callback")
                     module_logger.info(str(ct.request.id))
-                    current_bytes = int(redis_instance.get(str(ct.request.id) + "_upload_progress"))
+                    current_bytes = int(
+                        redis_instance.get(str(ct.request.id) + "_upload_progress")
+                    )
                     current_bytes += bytes_transferred
                     percent_complete = float(round((current_bytes / size) * 100, 2))
                     module_logger.info(bytes_transferred)
                     module_logger.info(percent_complete)
 
-                    update_dict = {
-                    }
+                    update_dict = {}
 
                     module_logger.info(file_name)
                     update_dict[file_name] = {
                         "status": states.STARTED,
                         "upload": percent_complete,
-                        "upload_file_size": size
+                        "upload_file_size": size,
                     }
 
                     try:
                         ct.update_state(
                             task_id=str(ct.request.id),
                             state=states.STARTED,
-                            meta=update_dict
+                            meta=update_dict,
                         )
                     except BaseException as e:
-                        module_logger.info('Task isnt ready for updates to meta yet...')
+                        module_logger.info("Task isnt ready for updates to meta yet...")
                         module_logger.error(str(e))
-                    
-                    redis_instance.set(str(ct.request.id) + "_upload_progress", int(current_bytes))
+
+                    redis_instance.set(
+                        str(ct.request.id) + "_upload_progress", int(current_bytes)
+                    )
 
                 upload_callback_bound = partial(upload_callback, self, l2a_name, size)
 
@@ -359,7 +364,7 @@ def download_l8_bulk_order(self, order_id):
                 )
 
                 if upload_result.status:
-                # Download, extract and Upload successful, need to upate the individual jobs for each tile
+                    # Download, extract and Upload successful, need to upate the individual jobs for each tile
                     task_status_list.append(
                         TaskStatus(True, upload_result.message, None)
                     )
@@ -367,20 +372,22 @@ def download_l8_bulk_order(self, order_id):
                     task_status_list.append(
                         TaskStatus(False, f"Upload step failed for {file_name}", None)
                     )
-                
+
             else:
-                task_status_list.append(TaskStatus(False, f"Extract step failed for {file_name}", None))
+                task_status_list.append(
+                    TaskStatus(False, f"Extract step failed for {file_name}", None)
+                )
             # Allow check jobs to get task status successfully
             time.sleep(30)
-            
+
     task_status_list.append(download_result)
-    
+
     for task_status in task_status_list:
         if not task_status.status:
-            module_logger.error('Failure occurred during bulk download phase')
+            module_logger.error("Failure occurred during bulk download phase")
             module_logger.error(task_status.message)
             raise TaskFailureException(task_status.message)
-    
+
     if upload_result.status:
         module_logger.info("overall job done successfully")
 
@@ -400,8 +407,9 @@ def download_l8_bulk_order(self, order_id):
         module_logger.debug(result_list)
 
     clean_up_folder(WORKING_FOLDER_PATH)
-    
+
     return result_list
+
 
 def start_job(
     tile_name,
@@ -409,7 +417,7 @@ def start_job(
     ac_res=10,
     api_source="usgs_ee",
     entity_id=None,
-    celery_task=None
+    celery_task=None,
 ):
     """Given the name of the tile, start the job processes
 
@@ -443,20 +451,26 @@ def start_job(
                 ("upload", TaskStatus(True, "l1c already on s3", None), ""),
             ]
         else:
-            download_result = download_using_landsat_downloader(tile_name, entity_id, celery_task=celery_task)
-            
+            download_result = download_using_landsat_downloader(
+                tile_name, entity_id, celery_task=celery_task
+            )
+
             if download_result:
                 if download_result.status:
                     full_path = Path(WORKING_FOLDER_PATH, tile_name + ".tar.gz")
                     print(full_path)
-                    
+
                     redis_instance.set(str(celery_task.request.id), 0)
-                
+
                     if full_path.is_dir():
-                        size = sum(f.stat().st_size for f in full_path.glob('**/*') if f.is_file())
+                        size = sum(
+                            f.stat().st_size
+                            for f in full_path.glob("**/*")
+                            if f.is_file()
+                        )
                     else:
                         size = float(full_path.stat().st_size)
-                    
+
                     def upload_callback(ct, bytes_transferred):
                         module_logger.info(ct.request.id)
                         current_bytes = int(redis_instance.get(str(ct.request.id)))
@@ -469,21 +483,29 @@ def start_job(
                             ct.update_state(
                                 task_id=str(ct.request.id),
                                 state=states.STARTED,
-                                meta={"upload": percent_complete}
+                                meta={"upload": percent_complete},
                             )
                         except BaseException as e:
-                            module_logger.info('Task isnt ready for updates to meta yet...')
+                            module_logger.info(
+                                "Task isnt ready for updates to meta yet..."
+                            )
                             module_logger.error(str(e))
-                        
+
                         redis_instance.set(str(ct.request.id), int(current_bytes))
 
                     upload_callback_bound = partial(upload_callback, celery_task)
-                    
+
                     upload_result = s3_helper.upload_single_file_to_s3(
-                        tile_name + '.tar.gz', INPUT_BUCKET_NAME, callback=upload_callback_bound
+                        tile_name + ".tar.gz",
+                        INPUT_BUCKET_NAME,
+                        callback=upload_callback_bound,
                     )
                 else:
-                    download_result = TaskStatus(False, "There was a problem downloading the product.", download_result.message)
+                    download_result = TaskStatus(
+                        False,
+                        "There was a problem downloading the product.",
+                        download_result.message,
+                    )
             else:
                 download_result = TaskStatus(
                     False, "No results found on USGS API", None
@@ -492,11 +514,10 @@ def start_job(
             return [("download", download_result, ""), ("upload", upload_result, "")]
 
 
-
-@task(bind=True, time_limit=60*60*6, soft_time_limit=60*60*3)
+@task(bind=True, time_limit=60 * 60 * 6, soft_time_limit=60 * 60 * 3)
 def download_l8(self, params):
     """Periodic task to check for L8 requests, bundle and submit to USGS bulk service
-    
+
     Steps:
         1. Fetch all jobs of type L8BulkDownload, status submitted
         2. Get tile name from each job

@@ -14,12 +14,12 @@ spec:
     spec:
       containers:
         - name: celery-downloader
-          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.0
+          image: registry.digitalocean.com/io-cullen/tile-viewer-api:v1.0.2
           command: ["/bin/sh"]
-          args: ["-c", "/code/common/celery_worker_downloader.sh"]
+          args: ["-c", "/app/common/celery_worker_downloader.sh"]
           imagePullPolicy: Always
           volumeMounts:
-            - mountPath: /code/config.yaml
+            - mountPath: /app/config.yaml
               subPath: config.yaml
               name: jobmanager-config-volume
       # imagePullSecrets:

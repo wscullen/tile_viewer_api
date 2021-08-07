@@ -81,8 +81,8 @@ ch.setFormatter(formatter)
 module_logger.addHandler(ch)
 
 
-INPUT_BUCKET_NAME = "s2-l1c-archive"
-OUTPUT_BUCKET_NAME = "sen2agri-l2a"
+INPUT_BUCKET_NAME = f"s2-l1c-archive{settings.BUCKET_SUFFIX}"
+OUTPUT_BUCKET_NAME = f"sen2agri-l2a{settings.BUCKET_SUFFIX}"
 
 WORKING_FOLDER_PATH = Path(settings.BASE_DIR, "working_folder")
 
@@ -252,8 +252,7 @@ def find_l2a_path(l1c_path):
 
 
 def get_l2a_products_for_window(dates_in_window, current_date, tile, aoi_name):
-    
-    
+
     prev_l2a_command_list = []  # list of tuples, tile name and path to tile
 
     l2a_download_results = []
@@ -327,31 +326,31 @@ def create_l2a_command(
 
 
 def create_l2a_imagery(current_date, tile, all_dates, window_size, aoi_name):
-    """ 
-        current_date = current date we want l2a imagery for
-        tile = current tile we want l2a imagery for
-        date_window = previous dates before current date (depends on window size)
+    """
+    current_date = current date we want l2a imagery for
+    tile = current tile we want l2a imagery for
+    date_window = previous dates before current date (depends on window size)
 
-        Overall steps:
+    Overall steps:
 
-        Check tile and date combo for existence of L2A imagery
+    Check tile and date combo for existence of L2A imagery
 
-        if L2A exists, we return
-        else
-            create date_window from all_dates and window_size
-            for date in date_window
-                check date for L2a imagery
-                if l2a exists 
-                    download it
-                    add to l2a demmaccs command list
-                else
-                    recurse into create_l2a_imagery(date, tile, all_dates, date_window_size)
-            
-            download l1c imagery for current_date
+    if L2A exists, we return
+    else
+        create date_window from all_dates and window_size
+        for date in date_window
+            check date for L2a imagery
+            if l2a exists
+                download it
+                add to l2a demmaccs command list
+            else
+                recurse into create_l2a_imagery(date, tile, all_dates, date_window_size)
 
-            if l2a_demmaccs command list is not empty, create demmacs command wiht prev l2a tiles
-            run demmaccs for current date
-            upload l2a imagery
+        download l1c imagery for current_date
+
+        if l2a_demmaccs command list is not empty, create demmacs command wiht prev l2a tiles
+        run demmaccs for current date
+        upload l2a imagery
     """
 
     module_logger.info(
@@ -482,11 +481,11 @@ def check_l2a_imagery_exists(imagery_date, tile_name, aoi_name):
 
 def generate_l2a_imagery(imagery_list, aoi_name, job_id, window_size=3):
     """
-        Steps:
-            Get dates from date window (current plus 2 previous)
-            If date == date 0, no need to check other dates
-            for each date, check if l2a exists, if it doesn't recursively call generate_l2a_imagery
-            unless date 0, date 0 proceeds unless l1c is not available
+    Steps:
+        Get dates from date window (current plus 2 previous)
+        If date == date 0, no need to check other dates
+        for each date, check if l2a exists, if it doesn't recursively call generate_l2a_imagery
+        unless date 0, date 0 proceeds unless l1c is not available
     """
     module_logger.info("Inside generate l2a imagery")
 
@@ -545,7 +544,7 @@ def create_l2a_imagery_for_tile(self, tile, all_dates, aoi_name, window_size):
     while len(all_dates) > 0:
         for idx, d in enumerate(all_dates):
             result = create_l2a_imagery(d, tile, all_dates, window_size, aoi_name)
-            
+
             if not result.status:
                 module_logger.info(
                     f"Possibly maja processing failed for date {d}, {result}, removing and starting again"
@@ -565,13 +564,13 @@ def create_l2a_imagery_for_tile(self, tile, all_dates, aoi_name, window_size):
                 # break
             else:
                 self.update_state(
-                state=states.STARTED,
-                meta={
-                    "dates_completed": idx + 1,
-                    "dates_total": total_dates,
-                    "most_recent_date": d,
-                },
-            )
+                    state=states.STARTED,
+                    meta={
+                        "dates_completed": idx + 1,
+                        "dates_total": total_dates,
+                        "most_recent_date": d,
+                    },
+                )
 
             clean_up_folder(Path(WORKING_FOLDER_PATH, tile))
 
@@ -691,7 +690,7 @@ def start_l2a_job(imagery_list, job_id, aoi_name, window_size=3, maja_ver="3.2.2
                     "20190721": []
                 }
             }
-    
+
     """
     module_logger.info("Attempting to start L2A celery tasks...")
 
@@ -713,4 +712,3 @@ def start_l2a_job(imagery_list, job_id, aoi_name, window_size=3, maja_ver="3.2.2
     module_logger.info("done calling generate_l2a_imagery")
     module_logger.info(task_group)
     return task_group
-

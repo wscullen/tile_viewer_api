@@ -25,6 +25,9 @@ delete all but the most recent using helper functions
 
 """
 
+from django.conf import settings
+
+
 from pathlib import Path
 from datetime import datetime, date
 
@@ -53,7 +56,10 @@ def sorting_function_key(x):
 
 
 def delete_duplicate_s2_l2a(
-    config_dict, working_folder, bucket_name="s2-l2a-products", dry_run=True
+    config_dict,
+    working_folder,
+    bucket_name=f"s2-l2a-products{settings.BUCKET_SUFFIX}",
+    dry_run=True,
 ):
     s3_helper = S3Utility(config_dict, working_folder)
     # paginator = s3_helper.s3_client.get_paginator("list_objects_v2")
@@ -66,16 +72,14 @@ def delete_duplicate_s2_l2a(
     # prev_key = None
     # try:
     #     for page in paginator.paginate(Bucket="s2-l2a-products", Prefix="tiles", PaginationConfig={'PageSize': 10}):
-        
-    #         # print(page["KeyCount"])
 
+    #         # print(page["KeyCount"])
 
     #         if "Contents" in page.keys():
     #             for item in page["Contents"]:
     #                 prev_key = item
     #                 key_total += 1
     #                 # print(key_total)
-            
 
     #         # if "ContinuationToken" in page.keys() and "NextContinuationToken"  not in page.keys():
     #         #     print('Found continuation token')
@@ -83,7 +87,7 @@ def delete_duplicate_s2_l2a(
     # except BaseException as e:
     #     print(e)
     #     print(prev_key)
-        
+
     # print(key_total)
     product_key_list = []
     all_keys = []
@@ -97,7 +101,7 @@ def delete_duplicate_s2_l2a(
         count += 1
         all_keys.append(key)
         key_split = key.split("/")
-        #MTD_MSIL2A.xml
+        # MTD_MSIL2A.xml
         if key_split[-1] == "MTD_MSIL2A.xml":
             print("Found a product")
             print(key_split[-2])
@@ -170,16 +174,20 @@ def delete_duplicate_s2_l2a(
                 print("ACTUALLY DELETED (NOT A DRY RUN)")
 
             for item in deleted_items:
-                print(item)    
+                print(item)
     if dry_run:
-        print('Nothing was deleted because this was  dry run')
+        print("Nothing was deleted because this was  dry run")
 
     print(f"Total deleted items: {len(total_deleted)}")
     for item in total_deleted:
         print("/".join(item))
 
+
 def delete_duplicate_s2_l1c(
-    config_dict, working_folder, bucket_name="s2-l1c-archive", dry_run=True
+    config_dict,
+    working_folder,
+    bucket_name=f"s2-l1c-archive{settings.BUCKET_SUFFIX}",
+    dry_run=True,
 ):
 
     s3_helper = S3Utility(config_dict, working_folder)
@@ -213,7 +221,7 @@ def delete_duplicate_s2_l1c(
             else:
                 sensing_date = temp_key.split("_")[2]
                 tile = temp_key.split("_")[5]
-            
+
             if sensing_date == sensing_date_to_match and tile_to_match == tile:
                 duplicate_key_list.append(temp_key)
 
@@ -245,14 +253,13 @@ def delete_duplicate_s2_l1c(
                 print(item)
 
             total_deleted.extend(deleted_items)
-    
+
     if dry_run:
-        print('Nothing was deleted because this was  dry run')
+        print("Nothing was deleted because this was  dry run")
 
     print(f"Total deleted items: {len(total_deleted)}")
     for item in total_deleted:
         print(item)
-
 
 
 if __name__ == "__main__":

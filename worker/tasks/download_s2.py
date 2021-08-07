@@ -79,8 +79,8 @@ from django.conf import settings
 MAX_S3_ATTEMPTS = 3
 
 # Internal Minio Config
-INPUT_BUCKET_NAME = "s2-l1c-archive"
-OUTPUT_BUCKET_NAME = "s2-l2a-products"
+INPUT_BUCKET_NAME = f"s2-l1c-archive{settings.BUCKET_SUFFIX}"
+OUTPUT_BUCKET_NAME = f"s2-l2a-products{settings.BUCKET_SUFFIX}"
 
 CONFIG_FILE = "config.yaml"
 CONFIG_FILE_PATH = Path(settings.BASE_DIR, CONFIG_FILE)
@@ -99,6 +99,7 @@ redis_instance = redis.StrictRedis(
     password=settings.REDIS_PASS,
     decode_responses=True,
 )
+
 
 def download_using_landsat_downloader(tile_name):
     downloader = l8_downloader.L8Downloader(CONFIG_FILE_PATH, verbose=False)
@@ -133,8 +134,7 @@ def download_using_landsat_downloader(tile_name):
 
 
 def run_atmos_correction(tile_fullpath, resolution=10):
-    """Call sen2cor using L2A_PRocess
-    """
+    """Call sen2cor using L2A_PRocess"""
 
     command_string = f"L2A_Process --resolution {resolution} {tile_fullpath}"
 
@@ -280,7 +280,7 @@ def download_using_sentinel_downloader(tile_id, tile_name, celery_task=None):
     if celery_task:
 
         def callback(progress_so_far, total_filesize, percentage_complete):
-            module_logger.info('Celery task info in download callback:')
+            module_logger.info("Celery task info in download callback:")
             module_logger.info(celery_task)
             module_logger.info(type(celery_task))
             module_logger.info(percentage_complete)
@@ -288,7 +288,7 @@ def download_using_sentinel_downloader(tile_id, tile_name, celery_task=None):
             result = AsyncResult(celery_task)
             info = result.info
             state = result.state
-            module_logger.info('Celery task info and state:')
+            module_logger.info("Celery task info and state:")
             module_logger.info(info)
             module_logger.info(state)
             celery_task.update_state(
@@ -433,20 +433,22 @@ def start_job(
 
             if download_result[0]:
                 full_path = Path(WORKING_FOLDER_PATH, tile_name + ".zip")
-                
+
                 size = 0
 
                 if full_path.is_dir():
-                    size = sum(f.stat().st_size for f in full_path.glob('**/*') if f.is_file())
+                    size = sum(
+                        f.stat().st_size for f in full_path.glob("**/*") if f.is_file()
+                    )
                 else:
                     size = float(full_path.stat().st_size)
 
-                module_logger.info('Celery task info:')
+                module_logger.info("Celery task info:")
                 module_logger.info(celery_task)
                 module_logger.info(type(celery_task))
                 module_logger.info(str(celery_task.request.id))
-                
-                module_logger.info('Setting redis task download progress.')
+
+                module_logger.info("Setting redis task download progress.")
                 redis_instance.set(str(celery_task.request.id), 0)
 
                 def upload_callback(ct, bytes_transferred):
@@ -461,18 +463,20 @@ def start_job(
                         ct.update_state(
                             task_id=str(ct.request.id),
                             state=states.STARTED,
-                            meta={"upload": percent_complete}
+                            meta={"upload": percent_complete},
                         )
                     except BaseException as e:
-                        module_logger.info('Task isnt ready for updates to meta yet...')
+                        module_logger.info("Task isnt ready for updates to meta yet...")
                         module_logger.error(str(e))
-                    
+
                     redis_instance.set(str(ct.request.id), int(current_bytes))
 
                 upload_callback_bound = partial(upload_callback, celery_task)
-                module_logger.info('Starting upload')
+                module_logger.info("Starting upload")
                 upload_result = s3_helper.upload_single_file_to_s3(
-                    tile_name + ".zip", INPUT_BUCKET_NAME, callback=upload_callback_bound
+                    tile_name + ".zip",
+                    INPUT_BUCKET_NAME,
+                    callback=upload_callback_bound,
                 )
 
             result_list = [
@@ -522,14 +526,16 @@ def start_job(
                 #     )
 
                 redis_instance.set(str(celery_task.id), 0)
-                
+
                 full_path = l2a_path
 
                 if full_path.is_dir():
-                    size = sum(f.stat().st_size for f in full_path.glob('**/*') if f.is_file())
+                    size = sum(
+                        f.stat().st_size for f in full_path.glob("**/*") if f.is_file()
+                    )
                 else:
                     size = float(full_path.stat().st_size)
-                
+
                 def upload_callback(ct, bytes_transferred):
                     module_logger.info(ct.request.id)
                     current_bytes = int(redis_instance.get(str(ct.request.id)))
@@ -542,16 +548,16 @@ def start_job(
                         ct.update_state(
                             task_id=str(ct.request.id),
                             state=states.STARTED,
-                            meta={"upload": percent_complete}
+                            meta={"upload": percent_complete},
                         )
                     except BaseException as e:
-                        module_logger.info('Task isnt ready for updates to meta yet...')
+                        module_logger.info("Task isnt ready for updates to meta yet...")
                         module_logger.error(str(e))
-                    
+
                     redis_instance.set(str(ct.request.id), int(current_bytes))
 
                 upload_callback_bound = partial(upload_callback, celery_task)
-                    
+
                 upload_result = s3_helper.upload_unarchived_product_to_s3_bucket(
                     l2a_path, OUTPUT_BUCKET_NAME, callback=upload_callback_bound
                 )
@@ -624,7 +630,9 @@ def start_job(
 
                 # If it is a new tile, and not able to be pulled from the repo, upload it, with no consequence to the result reporting
                 if download_result[0]:
-                    s3_helper.upload_single_file_to_s3(tile_name + '.zip', OUTPUT_BUCKET_NAME)
+                    s3_helper.upload_single_file_to_s3(
+                        tile_name + ".zip", OUTPUT_BUCKET_NAME
+                    )
                 else:
                     download_result = local_download_result
 
@@ -639,7 +647,7 @@ def start_job(
                     l2a_path = find_l2a_path(extract_result[2])
 
                     module_logger.info(str(celery_task.request.id))
-                
+
                     redis_instance.set(str(celery_task.request.id), 0)
 
                     def upload_callback(ct, bytes_transferred):
@@ -654,12 +662,14 @@ def start_job(
                             ct.update_state(
                                 task_id=str(ct.request.id),
                                 state=states.STARTED,
-                                meta={"upload": percent_complete}
+                                meta={"upload": percent_complete},
                             )
                         except BaseException as e:
-                            module_logger.info('Task isnt ready for updates to meta yet...')
+                            module_logger.info(
+                                "Task isnt ready for updates to meta yet..."
+                            )
                             module_logger.error(str(e))
-                        
+
                         redis_instance.set(str(ct.request.id), int(current_bytes))
 
                     upload_callback_bound = partial(upload_callback, celery_task)
@@ -692,10 +702,9 @@ def start_job(
             return result_list
 
 
-@task(bind=True, time_limit=60*60*6, soft_time_limit=60*60*3)
+@task(bind=True, time_limit=60 * 60 * 6, soft_time_limit=60 * 60 * 3)
 def download_s2(self, params):
-    """
-    """
+    """ """
 
     params = params["options"]
 

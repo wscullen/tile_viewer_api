@@ -8,11 +8,11 @@ server {
 
      
     location /static/ {
-        alias /code/static/;
+        alias /app/static/;
     }
 
     location /media/ {
-        alias /code/media/;
+        alias /app/media/;
     }
 
     location /media/lowres_previews/ {
@@ -45,7 +45,7 @@ server {
      }
 
 
-        alias /code/media/lowres_previews/;
+        alias /app/media/lowres_previews/;
     }
 
     location / {
